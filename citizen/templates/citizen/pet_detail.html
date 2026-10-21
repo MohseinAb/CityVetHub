@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        
+        <div class="mb-3">
+            <a href="{% url 'citizen:pet_list' %}" class="text-decoration-none text-secondary small d-inline-flex align-items-center gap-1">
+                <i class="bi bi-arrow-left"></i> Back to Adoption Hub
+            </a>
+        </div>
+
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" role="alert">
+                    {{ msg }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Pet Profile Card -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h2 class="fw-bold text-dark mb-1">{{ pet.registered_pet.name }}</h2>
+                        <span class="badge bg-light text-dark border me-1">{{ pet.registered_pet.species }}</span>
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary">Tag: {{ pet.registered_pet.registration_number }}</span>
+                    </div>
+                    <div class="text-end">
+                        <h3 class="fw-bold text-dark mb-0">₱{{ pet.adoption_fee }}</h3>
+                        <span class="text-muted small">Adoption Fee</span>
+                    </div>
+                </div>
+
+                <hr class="text-muted my-3">
+
+                <div class="row g-3 mb-4 small text-secondary">
+                    <div class="col-md-6">
+                        <strong>Breed / Gender:</strong> {{ pet.registered_pet.breed|default:"Mixed" }} / {{ pet.registered_pet.get_gender_display|default:"N/A" }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Location Barangay:</strong> {{ pet.registered_pet.barangay }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Listed By:</strong> {{ pet.listed_by.username }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Status:</strong> <span class="badge bg-success bg-opacity-10 text-success border border-success">{{ pet.get_status_display }}</span>
+                    </div>
+                </div>
+
+                <div class="bg-light p-3 rounded border-0">
+                    <h6 class="fw-bold text-dark mb-1">Reason for Rehoming & Personality</h6>
+                    <p class="text-secondary mb-0 small" style="white-space: pre-line;">{{ pet.adoption_reason }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- PET OWNER MANAGEMENT PANEL (If user is the lister) -->
+        {% if request.user == pet.listed_by %}
+            <div class="card border-0 shadow-sm mb-4 border-start border-4 border-primary">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-people-fill text-primary me-2"></i> Manage Applicants for {{ pet.registered_pet.name }}
+                    </h6>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'citizen:edit_adoption_listing' pet.id %}" class="btn btn-sm btn-outline-dark">Edit Listing</a>
+                        <form action="{% url 'citizen:delete_adoption_listing' pet.id %}" method="POST" onsubmit="return confirm('Remove listing?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light small text-muted">
+                                <tr>
+                                    <th class="ps-4">Applicant</th>
+                                    <th>Contact & Address</th>
+                                    <th>Reason</th>
+                                    <th>Status</th>
+                                    <th class="text-end pe-4">Decision</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for app in pet.applications.all %}
+                                    <tr>
+                                        <td class="ps-4 fw-semibold">{{ app.applicant.username }}</td>
+                                        <td class="small">{{ app.contact_number }}<br><span class="text-muted">{{ app.address }}</span></td>
+                                        <td class="small">{{ app.reason_for_adoption }}</td>
+                                        <td>
+                                            <span class="badge {% if app.status == 'APPROVED' %}bg-success{% elif app.status == 'REJECTED' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                                {{ app.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            {% if app.status == 'PENDING' %}
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="{% url 'citizen:finalize_adoption' app.id 'approve' %}" 
+                                                       class="btn btn-primary-custom fw-medium"
+                                                       onclick="return confirm('Confirm Adoption? This will officially transfer ownership of {{ pet.registered_pet.name }} to {{ app.applicant.username }}.');">
+                                                        Approve & Transfer
+                                                    </a>
+                                                    <a href="{% url 'citizen:finalize_adoption' app.id 'reject' %}" 
+                                                       class="btn btn-outline-danger"
+                                                       onclick="return confirm('Decline?');">
+                                                        Decline
+                                                    </a>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted small">Closed</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr><td colspan="5" class="text-center py-4 text-muted small">No applications received yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% elif request.user.is_authenticated and request.user != pet.listed_by %}
+            <!-- ADOPTION APPLICATION FORM (For prospective adopters) -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="fw-bold mb-0 text-dark">Submit an Adoption Application</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary-custom py-2 fw-semibold">Send Application to Owner</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- OFFICIAL OWNERSHIP HISTORY AUDIT LOG -->
+        {% if request.user == pet.registered_pet.owner or request.user.role == 'VET_OFFICER' or request.user.role == 'CVO_ADMIN' or request.user.is_superuser %}
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-clock-history text-secondary me-2"></i> Chain of Custody & Ownership History
+                    </h6>
+                    <span class="badge bg-light text-dark border">Tag: {{ pet.registered_pet.registration_number }}</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light small text-muted">
+                                <tr>
+                                    <th class="ps-4">Date</th>
+                                    <th>Previous Owner</th>
+                                    <th>New Owner</th>
+                                    <th>Type</th>
+                                    <th class="pe-4">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in pet.registered_pet.ownership_history.all %}
+                                    <tr>
+                                        <td class="ps-4 small text-dark">{{ record.transferred_at|date:"M d, Y h:i A" }}</td>
+                                        <td><span class="badge bg-light text-dark border">{{ record.previous_owner.username|default:"System" }}</span></td>
+                                        <td><span class="badge bg-secondary bg-opacity-10 text-secondary border">{{ record.new_owner.username|default:"Unknown" }}</span></td>
+                                        <td class="small">{{ record.get_transfer_type_display }}</td>
+                                        <td class="pe-4 small text-muted">{{ record.notes }}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted small">
+                                            Original registration with <strong>{{ pet.registered_pet.owner.username }}</strong> on {{ pet.registered_pet.registered_at|date:"M d, Y" }}. No transfers logged.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

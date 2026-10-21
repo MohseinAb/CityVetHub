@@ -1,0 +1,399 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    /* CSS for Verified Outbreak Pulsating Aura */
+    .custom-pulse-icon { 
+        background: transparent; 
+        border: none; 
+    }
+    .pulsating-aura {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background-color: #dc3545;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 0 rgba(220, 53, 69, 0.7);
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+        70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+</style>
+
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-shield-shaded text-primary"></i> CVO Command Center
+        </h2>
+        <span class="text-muted small">Iligan City Veterinary Services | Spatial Surveillance & Operations</span>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'officer:pet_lookup' %}" class="btn btn-primary-custom shadow-sm d-flex align-items-center justify-content-center gap-2">
+            <i class="bi bi-search"></i> Official Pet Lookup
+        </a>
+    </div>
+</div>
+
+{% if messages %}
+    {% for msg in messages %}
+        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<!-- Stats KPI Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card p-4 border-start border-4 border-info">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-muted fw-semibold text-uppercase mb-1" style="font-size: 0.75rem;">Registered Pets</h6>
+                    <h2 class="fw-bold mb-0 text-dark">{{ total_pets }}</h2>
+                </div>
+                <i class="bi bi-journal-medical fs-1 text-info opacity-50"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-4 border-start border-4 border-warning">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-muted fw-semibold text-uppercase mb-1" style="font-size: 0.75rem;">Pending Reports</h6>
+                    <h2 class="fw-bold mb-0 text-dark">{{ unverified_count }}</h2>
+                </div>
+                <i class="bi bi-exclamation-square fs-1 text-warning opacity-50"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-4 border-start border-4 border-danger">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-muted fw-semibold text-uppercase mb-1" style="font-size: 0.75rem;">Active Outbreaks</h6>
+                    <h2 class="fw-bold mb-0 text-dark">{{ verified_alerts.count }}</h2>
+                </div>
+                <i class="bi bi-activity fs-1 text-danger opacity-50"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Disease Surveillance Heatmap & Filters -->
+<div class="card mb-4">
+    <div class="card-header py-3 d-flex flex-wrap justify-content-between align-items-center bg-white gap-3">
+        <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+            <i class="bi bi-map text-primary"></i> Density Heatmap
+        </h6>
+        
+        <!-- Filter Controls -->
+        <div class="btn-group shadow-sm" role="group" aria-label="Map Filter">
+            <input type="radio" class="btn-check map-filter" name="mapfilter" id="filter-all" value="ALL" checked>
+            <label class="btn btn-outline-secondary btn-sm fw-medium" for="filter-all">All Reports</label>
+          
+            <input type="radio" class="btn-check map-filter" name="mapfilter" id="filter-community" value="UNVERIFIED">
+            <label class="btn btn-outline-secondary btn-sm fw-medium" for="filter-community">Citizen (Unverified)</label>
+          
+            <input type="radio" class="btn-check map-filter" name="mapfilter" id="filter-verified" value="VERIFIED">
+            <label class="btn btn-outline-secondary btn-sm fw-medium" for="filter-verified">CVO Verified</label>
+        </div>
+
+        <div class="small fw-medium d-flex gap-3">
+            <span class="text-danger"><i class="bi bi-circle-fill"></i> Critical (≥5)</span>
+            <span class="text-warning"><i class="bi bi-circle-fill"></i> Moderate (2-4)</span>
+            <span class="text-success"><i class="bi bi-circle-fill"></i> Monitored (1)</span>
+        </div>
+    </div>
+    <div class="card-body p-0 position-relative">
+        <!-- Live Coordinate Tracker -->
+        <div id="coord-tracker" class="badge bg-dark text-light border border-secondary shadow" 
+             style="position: absolute; bottom: 20px; left: 20px; z-index: 1000; font-family: monospace; font-size: 13px; padding: 8px 12px; pointer-events: none;">
+            Hover to get coordinates...
+        </div>
+        
+        <div id="heatmap" style="height: 500px; width: 100%; border-bottom-left-radius: 0.75rem; border-bottom-right-radius: 0.75rem;"></div>
+    </div>
+</div>
+
+<!-- Moderation: Pending Outbreak Incident Clusters -->
+<div class="card mb-4">
+    <div class="card-header bg-white py-3">
+        <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+            <i class="bi bi-inbox text-warning"></i> Pending Verification Overview ({{ pending_clusters|length }} Clusters)
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 border-0">
+                <thead class="table-light small text-uppercase text-muted" style="font-size: 0.75rem;">
+                    <tr>
+                        <th class="ps-4">Pathogen / Disease</th>
+                        <th>Barangay</th>
+                        <th>Max Severity</th>
+                        <th>Volume</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    {% for cluster in pending_clusters %}
+                        <tr>
+                            <td class="ps-4 fw-semibold text-dark">{{ cluster.disease_display }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ cluster.barangay }}</span></td>
+                            <td>
+                                <span class="badge {% if cluster.severity == 'CRITICAL' or cluster.severity == 'HIGH' %}bg-danger{% elif cluster.severity == 'MODERATE' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                    {{ cluster.severity_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary rounded-pill">{{ cluster.count }} Reports</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group btn-group-sm shadow-sm">
+                                    <a href="{% url 'officer:verify_cluster' cluster.barangay cluster.disease 'verify' %}" class="btn btn-outline-success fw-medium">Verify</a>
+                                    <button class="btn btn-outline-secondary fw-medium" type="button" data-bs-toggle="collapse" data-bs-target="#cluster-{{ forloop.counter }}">Inspect</button>
+                                    <a href="{% url 'officer:verify_cluster' cluster.barangay cluster.disease 'dismiss' %}" class="btn btn-outline-danger" onclick="return confirm('Dismiss all reports in this cluster?');" title="Dismiss Cluster">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        <!-- Hidden Collapsible Row for Drill-Down (Compact Scrollable Table) -->
+                        <tr class="collapse bg-light" id="cluster-{{ forloop.counter }}">
+                            <td colspan="5" class="p-0 border-bottom">
+                                <div class="p-3 bg-light">
+                                    <div class="d-flex justify-content-between align-items-end mb-2">
+                                        <h6 class="fw-bold text-muted mb-0" style="font-size: 0.8rem;">Incident Log Details: {{ cluster.barangay }}</h6>
+                                    </div>
+                                    <!-- Scrollable Container for High Volume Reports -->
+                                    <div class="table-responsive bg-white border rounded shadow-sm" style="max-height: 250px; overflow-y: auto;">
+                                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.8rem;">
+                                            <thead class="table-light sticky-top" style="z-index: 1;">
+                                                <tr>
+                                                    <th class="ps-3 py-2">Report Title</th>
+                                                    <th class="py-2">Reported Severity</th>
+                                                    <th class="py-2">Citizen</th>
+                                                    <th class="py-2">Time Logged</th>
+                                                    <th class="text-end pe-3 py-2">Link</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for report in cluster.reports %}
+                                                    <tr>
+                                                        <td class="ps-3 fw-medium text-dark">{{ report.title }}</td>
+                                                        <td>
+                                                            <span class="badge {% if report.severity == 'CRITICAL' or report.severity == 'HIGH' %}bg-danger{% elif report.severity == 'MODERATE' %}bg-warning text-dark{% else %}bg-success{% endif %}" style="font-size: 0.65rem;">
+                                                                {{ report.get_severity_display }}
+                                                            </span>
+                                                        </td>
+                                                        <td class="text-muted">{{ report.reporter.username }}</td>
+                                                        <td class="text-muted">{{ report.created_at|timesince }} ago</td>
+                                                        <td class="text-end pe-3">
+                                                            <a href="{% url 'citizen:disease_alert_detail' report.id %}" class="text-primary text-decoration-none fw-medium" target="_blank">View Details</a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted small">No unverified incident reports in queue.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Active Verified Outbreaks -->
+<div class="card">
+    <div class="card-header bg-white py-3">
+        <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+            <i class="bi bi-broadcast text-danger"></i> Active Advisories ({{ verified_alerts.count }})
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase text-muted" style="font-size: 0.75rem;">
+                    <tr>
+                        <th class="ps-4">Title</th>
+                        <th>Barangay</th>
+                        <th>Pathogen</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alert in verified_alerts %}
+                        <tr>
+                            <td class="ps-4 fw-medium text-dark">{{ alert.title }}</td>
+                            <td>{{ alert.barangay }}</td>
+                            <td class="text-muted">{{ alert.get_disease_display }}</td>
+                            <td><span class="badge bg-success bg-opacity-10 text-success border border-success">Verified Active</span></td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'officer:verify_alert' alert.id 'resolve' %}" class="btn btn-sm btn-light text-success fw-medium">
+                                    Mark Resolved
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted small">No active verified outbreaks on record.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const map = L.map('heatmap', {
+            center: [8.2320, 124.2480],
+            zoom: 14,
+            minZoom: 12,
+            maxZoom: 18
+        });
+
+        // --- LIVE COORDINATE TRACKER & CLICK-TO-COPY ---
+        const tracker = document.getElementById('coord-tracker');
+        
+        map.on('mousemove', function(e) {
+            tracker.innerHTML = `Lat: ${e.latlng.lat.toFixed(5)}<br>Lng: ${e.latlng.lng.toFixed(5)}`;
+        });
+
+        map.on('click', function(e) {
+            const coordStr = `[${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}]`;
+            navigator.clipboard.writeText(coordStr).then(() => {
+                const originalText = tracker.innerHTML;
+                tracker.innerHTML = `<span class="text-success fw-bold">Copied!</span><br>${coordStr}`;
+                setTimeout(() => { tracker.innerHTML = originalText; }, 1500);
+            });
+        });
+        // ------------------------------------------------
+
+        L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap France'
+        }).addTo(map);
+
+        const rawIncidents = {{ incidents_json|safe }};
+        let heatLayer;
+        let markersLayer = L.layerGroup().addTo(map);
+
+        // Function to filter and redraw map dynamically
+        function renderMap(filterType) {
+            markersLayer.clearLayers();
+            if (heatLayer) map.removeLayer(heatLayer);
+
+            // Filter Data based on selected toggle
+            let filtered = rawIncidents;
+            if (filterType !== 'ALL') {
+                filtered = rawIncidents.filter(inc => inc.status === filterType);
+            }
+
+            // Group filtered incidents by Barangay
+            const grouped = {};
+            filtered.forEach(inc => {
+                if (!grouped[inc.barangay]) {
+                    grouped[inc.barangay] = {
+                        lat: inc.lat, lng: inc.lng, cases: 0,
+                        diseases: new Set(),
+                        hasVerified: false
+                    };
+                }
+                grouped[inc.barangay].cases += 1;
+                grouped[inc.barangay].diseases.add(inc.disease);
+                if (inc.status === 'VERIFIED') grouped[inc.barangay].hasVerified = true;
+            });
+
+            const heatArray = [];
+            Object.keys(grouped).forEach(bName => {
+                const data = grouped[bName];
+                heatArray.push([data.lat, data.lng, Math.min(1.0, 0.4 + (data.cases * 0.2))]);
+
+                const diseaseListHtml = Array.from(data.diseases).join('<br> • ');
+
+                let marker;
+                if (data.hasVerified) {
+                    // Pulsating Red Aura for Verified Outbreaks
+                    const pulseIcon = L.divIcon({
+                        className: 'custom-pulse-icon',
+                        html: '<div class="pulsating-aura"></div>',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    });
+                    marker = L.marker([data.lat, data.lng], { icon: pulseIcon }).addTo(markersLayer);
+                } else {
+                    // Standard Circle for Unverified Community Clusters (12px radius)
+                    let badgeColor = data.cases >= 5 ? '#dc3545' : (data.cases >= 2 ? '#ffc107' : '#10b981');
+                    marker = L.circleMarker([data.lat, data.lng], {
+                        radius: 12,
+                        fillColor: badgeColor,
+                        color: '#ffffff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 1
+                    }).addTo(markersLayer);
+                }
+
+                // Enhanced Popup with Disease Details
+                marker.bindPopup(`
+                    <div style="font-family: 'Inter', sans-serif; min-width: 170px;">
+                        <div style="font-size: 13px; font-weight: 700; margin-bottom: 4px; color: #1e293b;">
+                            Brgy. ${bName}
+                            ${data.hasVerified ? '<span style="color: #dc3545; margin-left: 4px;">🛡️</span>' : ''}
+                        </div>
+                        <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">
+                            Active Reports: <strong style="color: #0f172a; font-size: 13px;">${data.cases}</strong>
+                        </div>
+                        <div style="font-size: 11px; color: #334155; margin-bottom: 10px; background: #f8fafc; padding: 4px; border-radius: 4px;">
+                            <strong>Reported Pathogens:</strong><br>
+                            <span style="color: #ef4444;">• ${diseaseListHtml}</span>
+                        </div>
+                        ${data.hasVerified ? 
+                            '<span style="font-size: 10px; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; background: #dc3545; color: #fff; font-weight: 700;">Official Outbreak</span>' :
+                            `<span style="font-size: 10px; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; background: ${data.cases >= 5 ? '#dc3545' : (data.cases >= 2 ? '#ffc107' : '#10b981')}; color: ${data.cases >= 2 && data.cases < 5 ? '#000' : '#fff'}; font-weight: 700;">
+                                ${data.cases >= 5 ? 'Critical' : (data.cases >= 2 ? 'Moderate' : 'Monitored')}
+                            </span>`
+                        }
+                    </div>
+                `);
+            });
+
+            // Reapply Heat Layer if points exist
+            if (heatArray.length > 0) {
+                heatLayer = L.heatLayer(heatArray, {
+                    radius: 35,
+                    blur: 25,
+                    maxZoom: 16,
+                    gradient: { 0.3: '#10b981', 0.6: '#fbbf24', 0.9: '#ef4444' }
+                }).addTo(map);
+            }
+        }
+
+        // Initialize Map
+        renderMap('ALL');
+
+        // Listen for filter radio button changes
+        document.querySelectorAll('.map-filter').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                renderMap(e.target.value);
+            });
+        });
+    });
+</script>
+{% endblock %}

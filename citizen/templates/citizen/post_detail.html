@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        
+        <div class="mb-3">
+            <a href="{% url 'citizen:community_feed' %}" class="text-decoration-none text-secondary small d-inline-flex align-items-center gap-1">
+                <i class="bi bi-arrow-left"></i> Back to Forum
+            </a>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-light text-dark border">{{ post.get_category_display }}</span>
+                        <span class="text-muted small">{{ post.created_at|date:"M d, Y h:i A" }}</span>
+                    </div>
+
+                    <!-- 3-Dot Dropdown Menu -->
+                    {% if request.user == post.author or request.user.role == 'CVO_ADMIN' or request.user.is_superuser %}
+                        <div class="dropdown">
+                            <button class="three-dots-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-2">
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2 small" href="{% url 'citizen:edit_community_post' post.id %}">
+                                        <i class="bi bi-pencil text-secondary"></i> Edit Post
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <li>
+                                    <form action="{% url 'citizen:delete_community_post' post.id %}" method="POST" onsubmit="return confirm('Delete this post permanently?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item d-flex align-items-center gap-2 py-2 small text-danger">
+                                            <i class="bi bi-trash"></i> Delete Post
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <h2 class="fw-bold text-dark mb-2">{{ post.title }}</h2>
+                <div class="small text-muted mb-4">
+                    By <span class="fw-semibold text-dark">{{ post.author.username }}</span>
+                    {% if post.author.role == 'VET_OFFICER' %}
+                        <span class="badge bg-warning text-dark ms-1">CVO Officer</span>
+                    {% elif post.author.role == 'CVO_ADMIN' %}
+                        <span class="badge bg-danger ms-1">CVO Admin</span>
+                    {% endif %}
+                </div>
+
+                <p class="text-secondary" style="white-space: pre-line;">{{ post.content }}</p>
+            </div>
+        </div>
+
+        <!-- Comments Section -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="fw-bold mb-0 text-dark">Comments ({{ post.comments.count }})</h5>
+            </div>
+            <div class="card-body p-4">
+                {% if post.comments.all %}
+                    <div class="d-flex flex-column gap-3 mb-4">
+                        {% for comment in post.comments.all %}
+                            <div class="bg-light p-3 rounded border-0">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="fw-semibold text-dark small">{{ comment.author.username }}</span>
+                                    <span class="text-muted small">{{ comment.created_at|timesince }} ago</span>
+                                </div>
+                                <p class="mb-0 text-secondary small">{{ comment.content }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted small mb-4">No comments yet. Share your thoughts below!</p>
+                {% endif %}
+
+                {% if user.is_authenticated %}
+                    <form method="POST" action="{% url 'citizen:add_comment' post.id %}">
+                        {% csrf_token %}
+                        {{ comment_form|crispy }}
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="submit" class="btn btn-primary-custom px-4">Post Reply</button>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="alert alert-light border small text-muted text-center mb-0">
+                        Please <a href="{% url 'login' %}" class="fw-bold text-dark">sign in</a> to leave a comment.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

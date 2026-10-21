@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <a href="{% url 'citizen:my_pets_list' %}" class="btn btn-link text-success p-0 mb-3 text-decoration-none">← Back to My Pets</a>
+        <div class="card border-0 shadow-sm p-4">
+            <h3 class="fw-bold text-success mb-2">Register a Pet</h3>
+            <p class="text-muted mb-4">Official registration under Iligan City Veterinary Services.</p>
+
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a href="{% url 'citizen:my_pets_list' %}" class="btn btn-light">Cancel</a>
+                    <button type="submit" class="btn btn-success px-4 fw-semibold">Save & Generate ID</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

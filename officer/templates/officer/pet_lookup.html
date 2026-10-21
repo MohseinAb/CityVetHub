@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <a href="{% url 'officer:dashboard' %}" class="btn btn-link text-success p-0 mb-3 text-decoration-none">← Back to CVO Command</a>
+
+        <div class="card border-0 shadow-sm p-4 mb-4">
+            <h3 class="fw-bold text-dark mb-1">🔍 Official Pet Record Lookup</h3>
+            <p class="text-muted small mb-3">Scan or enter pet registration ID (`ILG-PET-XXXXXX`) or microchip ID to review records and stamp certified vaccines.</p>
+
+            <form method="GET" class="d-flex gap-2">
+                <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="e.g. ILG-PET-3A8F12" required autofocus>
+                <button type="submit" class="btn btn-success px-4 fw-semibold">Lookup</button>
+            </form>
+        </div>
+
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    {{ msg }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% if query and not pet %}
+            <div class="alert alert-warning border">
+                No registered pet found matching ID: <strong>{{ query }}</strong>.
+            </div>
+        {% elif pet %}
+            <!-- Pet Found Card -->
+            <div class="card border-0 shadow-sm p-4 mb-4 border-top border-4 border-success">
+                <div class="row align-items-center">
+                    <div class="col-md-3 text-center mb-3 mb-md-0">
+                        {% if pet.photo %}
+                            <img src="{{ pet.photo.url }}" class="rounded-circle object-fit-cover shadow-sm" style="width: 120px; height: 120px;" alt="{{ pet.name }}">
+                        {% else %}
+                            <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center text-muted shadow-sm" style="width: 120px; height: 120px; font-size: 3rem;">🐾</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-9">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h2 class="fw-bold text-success mb-0">{{ pet.name }}</h2>
+                                <span class="badge bg-dark mb-2">{{ pet.registration_number }}</span>
+                            </div>
+                            <span class="badge bg-light text-dark border p-2">Barangay {{ pet.barangay }}</span>
+                        </div>
+                        <div class="row g-2 text-secondary small">
+                            <div class="col-sm-6"><strong>Species/Breed:</strong> {{ pet.get_species_display }} ({{ pet.breed }})</div>
+                            <div class="col-sm-6"><strong>Owner:</strong> {{ pet.owner.username }} ({{ pet.owner.email }})</div>
+                            <div class="col-sm-6"><strong>Tag/Microchip:</strong> {{ pet.microchip_or_tag_id|default:"None" }}</div>
+                            <div class="col-sm-6"><strong>Registered:</strong> {{ pet.registered_at|date:"M d, Y" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <!-- Verified Vaccine History -->
+                <div class="col-md-7">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white py-3">
+                            <h5 class="fw-bold mb-0 text-dark">Current Vaccine Log</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light small">
+                                    <tr>
+                                        <th>Vaccine</th>
+                                        <th>Administered</th>
+                                        <th>Booster Due</th>
+                                        <th>Administered By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for vax in pet.vaccinations.all %}
+                                        <tr>
+                                            <td><span class="badge bg-danger">{{ vax.get_vaccine_name_display }}</span></td>
+                                            <td class="small">{{ vax.administered_date|date:"M d, Y" }}</td>
+                                            <td class="small text-danger fw-semibold">{{ vax.expiration_date|date:"M d, Y" }}</td>
+                                            <td class="small text-muted">{{ vax.administered_by }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="4" class="text-center py-4 text-muted small">No vaccines recorded yet.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CVO Official Injection Stamper -->
+                <div class="col-md-5">
+                    <div class="card border-0 shadow-sm p-4">
+                        <h5 class="fw-bold text-success mb-1">Inject / Certify Vaccine</h5>
+                        <p class="text-muted small mb-3">Stamped officially under your CVO credentials.</p>
+                        <form method="POST">
+                            {% csrf_token %}
+                            {{ vax_form|crispy }}
+                            <button type="submit" class="btn btn-success w-100 mt-3 py-2 fw-bold">Stamp Official Record</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

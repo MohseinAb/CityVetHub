@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-danger mb-1">Iligan City Disease Surveillance Bulletin</h2>
+        <p class="text-muted">Real-time alerts, community outbreak reports, and veterinary warnings by barangay.</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'citizen:report_disease' %}" class="btn btn-danger shadow-sm">+ Report Incident / Outbreak</a>
+    </div>
+</div>
+
+{% if active_critical_count > 0 %}
+    <div class="alert alert-danger d-flex align-items-center mb-4 shadow-sm" role="alert">
+        <span class="fs-4 me-3">⚠️</span>
+        <div>
+            <strong>High-Risk Alert Active:</strong> There are currently <strong>{{ active_critical_count }}</strong> verified high-severity disease clusters under active City Vet monitoring. Review precautions below.
+        </div>
+    </div>
+{% endif %}
+
+<!-- Filters -->
+<div class="card border-0 shadow-sm p-3 mb-4">
+    <form method="GET" class="row g-2 align-items-center">
+        <div class="col-md-4">
+            <select name="barangay" class="form-select">
+                <option value="">All Barangays</option>
+                {% for b_val, b_label in barangays %}
+                    <option value="{{ b_val }}" {% if selected_barangay == b_val %}selected{% endif %}>{{ b_label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <select name="disease" class="form-select">
+                <option value="">All Pathogens / Diseases</option>
+                {% for d_val, d_label in diseases %}
+                    <option value="{{ d_val }}" {% if selected_disease == d_val %}selected{% endif %}>{{ d_label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+            <button type="submit" class="btn btn-outline-danger w-100">Filter</button>
+            <a href="{% url 'citizen:disease_alerts' %}" class="btn btn-light border">Reset</a>
+        </div>
+    </form>
+</div>
+
+<!-- Alerts Feed -->
+<div class="row g-3">
+    {% for alert in alerts %}
+        <div class="col-12">
+            <div class="card border-0 shadow-sm border-start border-4 {% if alert.severity == 'CRITICAL' %}border-danger{% elif alert.severity == 'HIGH' %}border-warning{% else %}border-info{% endif %}">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                        <div>
+                            <span class="badge {% if alert.severity == 'CRITICAL' %}bg-danger{% elif alert.severity == 'HIGH' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %} me-2">
+                                {{ alert.get_severity_display }}
+                            </span>
+                            <span class="badge bg-light text-dark border">📍 Barangay {{ alert.barangay }}</span>
+                            {% if alert.status == 'VERIFIED' %}
+                                <span class="badge bg-success ms-1">✔ Verified by City Vet</span>
+                            {% else %}
+                                <span class="badge bg-secondary ms-1">Community Report</span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted">{{ alert.created_at|timesince }} ago</small>
+                    </div>
+
+                    <h4 class="fw-bold mb-2">
+                        <a href="{% url 'citizen:disease_alert_detail' alert.pk %}" class="text-decoration-none text-dark">
+                            {{ alert.title }}
+                        </a>
+                    </h4>
+
+                    <p class="text-secondary mb-3">{{ alert.description|truncatewords:30 }}</p>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Pathogen: <strong>{{ alert.get_disease_display }}</strong></span>
+                        <a href="{% url 'citizen:disease_alert_detail' alert.pk %}" class="btn btn-outline-danger btn-sm">Read Full Advisory →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12">
+            <div class="alert alert-light border text-center py-5">
+                <div class="fs-4 mb-2">🛡️</div>
+                <h5 class="fw-bold text-dark">No Active Disease Alerts</h5>
+                <p class="text-muted small">No outbreaks or active disease clusters are reported for this selection.</p>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

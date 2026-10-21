@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <a href="{% url 'citizen:disease_alerts' %}" class="btn btn-link text-danger p-0 mb-3 text-decoration-none">← Back to Alerts Bulletin</a>
+
+        <div class="card border-0 shadow-sm p-4">
+            <h3 class="fw-bold text-danger mb-2">Report Disease Incident or Cluster</h3>
+            <p class="text-muted small mb-4">Help the veterinary office and fellow citizens monitor disease spreads like Parvo and Rabies.</p>
+
+            <form method="POST">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a href="{% url 'citizen:home' %}" class="btn btn-light border">Cancel</a>
+                    <button type="submit" class="btn btn-danger px-4 fw-semibold">Submit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

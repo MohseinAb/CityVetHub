@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <a href="{% url 'citizen:disease_alerts' %}" class="btn btn-link text-danger p-0 mb-3 text-decoration-none">← Back to Alerts Bulletin</a>
+
+        <div class="card border-0 shadow-sm p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div>
+                    <span class="badge {% if alert.severity == 'CRITICAL' %}bg-danger{% elif alert.severity == 'HIGH' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %} fs-6">
+                        {{ alert.get_severity_display }}
+                    </span>
+                    {% if alert.status == 'VERIFIED' %}
+                        <span class="badge bg-success fs-6">✔ Verified City Vet Advisory</span>
+                    {% endif %}
+                </div>
+                <span class="text-muted small">Reported on {{ alert.created_at|date:"M d, Y h:i A" }}</span>
+            </div>
+
+            <h2 class="fw-bold text-dark mb-2">{{ alert.title }}</h2>
+            <p class="text-muted pb-3 border-bottom">
+                📍 Location: <strong>Barangay {{ alert.barangay }}, Iligan City</strong> | Pathogen: <strong>{{ alert.get_disease_display }}</strong>
+            </p>
+
+            <h5 class="fw-bold text-dark mt-2">Situation Overview</h5>
+            <p class="text-secondary" style="white-space: pre-line;">{{ alert.description }}</p>
+
+            {% if alert.precautionary_measures %}
+                <div class="alert alert-warning border mt-4">
+                    <h6 class="fw-bold text-dark mb-1">Recommended Precautions & Measures:</h6>
+                    <p class="small text-secondary mb-0" style="white-space: pre-line;">{{ alert.precautionary_measures }}</p>
+                </div>
+            {% endif %}
+
+            <div class="card bg-light border-0 p-3 mt-4">
+                <small class="text-muted">
+                    Reported by: <strong>{{ alert.reporter.username }}</strong>. If your pet shows similar symptoms, immediately isolate them and contact the Iligan City Veterinary Services Office.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

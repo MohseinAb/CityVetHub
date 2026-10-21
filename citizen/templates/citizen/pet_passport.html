@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <a href="{% url 'citizen:my_pets_list' %}" class="btn btn-link text-success p-0 mb-3 text-decoration-none">← Back to My Pets</a>
+
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    {{ msg }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Pending Scanner Requests Alert Box -->
+        {% if access_requests %}
+            <div class="card border-warning shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark fw-bold">
+                    🔔 Pending Scan Access Requests ({{ access_requests.count }})
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3">Someone scanned your pet's QR code and is requesting permission to view their full medical and contact record:</p>
+                    <div class="list-group">
+                        {% for req in access_requests %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ req.requester.username }}</strong>
+                                    <div class="text-muted small">Purpose: "{{ req.purpose }}" • {{ req.requested_at|timesince }} ago</div>
+                                </div>
+                                <div class="btn-group">
+                                    <a href="{% url 'citizen:manage_access_request' req.id 'approve' %}" class="btn btn-sm btn-success">Approve</a>
+                                    <a href="{% url 'citizen:manage_access_request' req.id 'reject' %}" class="btn btn-sm btn-outline-danger">Deny</a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Top Pet Digital ID Card with QR -->
+        <div class="card border-0 shadow-sm overflow-hidden mb-4 border-top border-4 border-success">
+            <div class="card-body p-4">
+                <div class="row align-items-center">
+                    <div class="col-md-3 text-center mb-3 mb-md-0">
+                        {% if pet.photo %}
+                            <img src="{{ pet.photo.url }}" class="rounded-circle object-fit-cover shadow-sm border border-2 border-white mb-2" style="width: 120px; height: 120px;" alt="{{ pet.name }}">
+                        {% else %}
+                            <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center text-muted shadow-sm mb-2" style="width: 120px; height: 120px; font-size: 3rem;">
+                                🐾
+                            </div>
+                        {% endif %}
+                        <div>
+                            <span class="badge bg-dark">{{ pet.registration_number }}</span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <h2 class="fw-bold text-success mb-0">{{ pet.name }}</h2>
+                            <span class="badge bg-secondary">{{ pet.get_species_display }} • {{ pet.gender }}</span>
+                        </div>
+                        <div class="row g-2 text-secondary small">
+                            <div class="col-sm-6"><strong>Breed:</strong> {{ pet.breed }}</div>
+                            <div class="col-sm-6"><strong>Barangay:</strong> {{ pet.barangay }}</div>
+                            <div class="col-sm-6"><strong>Tag / Microchip:</strong> {{ pet.microchip_or_tag_id|default:"None" }}</div>
+                            <div class="col-sm-6"><strong>Neutered:</strong> {% if pet.is_neutered %}Yes{% else %}No{% endif %}</div>
+                            <div class="col-sm-6"><strong>Registered:</strong> {{ pet.registered_at|date:"M d, Y" }}</div>
+                        </div>
+                    </div>
+
+                    <!-- QR Code Display -->
+                    <div class="col-md-3 text-center border-start ps-md-4 mt-3 mt-md-0">
+                        <img src="data:image/png;base64,{{ qr_base64 }}" class="img-fluid rounded border p-1 mb-1" style="max-width: 130px;" alt="Pet QR Code">
+                        <div class="small fw-semibold text-muted">Scan Tag QR</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vaccination & Medical Log -->
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="fw-bold mb-0 text-dark">Vaccination Logbook</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light small">
+                                    <tr>
+                                        <th>Vaccine</th>
+                                        <th>Administered</th>
+                                        <th>Booster Due</th>
+                                        <th>Vet/Clinic</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for vax in vaccinations %}
+                                        <tr>
+                                            <td><span class="badge bg-danger">{{ vax.get_vaccine_name_display }}</span></td>
+                                            <td class="small">{{ vax.administered_date|date:"M d, Y" }}</td>
+                                            <td class="small text-danger fw-semibold">{{ vax.expiration_date|date:"M d, Y" }}</td>
+                                            <td class="small text-muted">{{ vax.administered_by }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="4" class="text-center py-4 text-muted small">No vaccines recorded yet.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="card border-0 shadow-sm p-4">
+                    <h5 class="fw-bold text-dark mb-2">Record Vaccination</h5>
+                    <form method="POST">
+                        {% csrf_token %}
+                        {{ vax_form|crispy }}
+                        <button type="submit" class="btn btn-success w-100 mt-3 py-2 fw-semibold">Save Record</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if request.user == registered_pet.owner or request.user.role == 'VET_OFFICER' or request.user.role == 'CVO_ADMIN' or request.user.is_superuser %}
+    <div class="card shadow-sm border-0 mt-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-clock-history text-primary me-2"></i> Official Ownership & Custody History
+            </h6>
+            <span class="badge bg-light text-dark border">Registry Tag: {{ registered_pet.registration_number }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small text-muted">
+                        <tr>
+                            <th class="ps-4">Date of Transfer</th>
+                            <th>Previous Owner</th>
+                            <th>New Owner</th>
+                            <th>Transfer Type</th>
+                            <th class="pe-4">Official Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in registered_pet.ownership_history.all %}
+                            <tr>
+                                <td class="ps-4 small fw-medium text-dark">{{ record.transferred_at|date:"M d, Y h:i A" }}</td>
+                                <td>
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                                        {{ record.previous_owner.username|default:"System" }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success">
+                                        {{ record.new_owner.username|default:"Unknown" }}
+                                    </span>
+                                </td>
+                                <td class="small">{{ record.get_transfer_type_display }}</td>
+                                <td class="pe-4 small text-muted">{{ record.notes }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted small">
+                                    Original registration with <strong>{{ registered_pet.owner.username }}</strong> on {{ registered_pet.registered_at|date:"M d, Y" }}. No ownership transfers recorded.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

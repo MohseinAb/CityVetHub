@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        
+        <!-- Header & Create Post Trigger -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="fw-bold text-dark mb-1">City Vet Community</h3>
+                <span class="text-muted small">Discussions, pet updates, and community alerts</span>
+            </div>
+            <a href="{% url 'citizen:create_post' %}" class="btn btn-primary-custom shadow-sm d-inline-flex align-items-center gap-2">
+                <i class="bi bi-plus-lg"></i> New Post
+            </a>
+        </div>
+
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" role="alert">
+                    {{ msg }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Posts Stream -->
+        <div class="d-flex flex-column gap-3">
+            {% for post in posts %}
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        
+                        <!-- Post Header -->
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="bg-light rounded-circle d-flex align-items-center justify-content-center text-secondary fw-bold" style="width: 40px; height: 40px;">
+                                    {{ post.author.username|slice:":1"|upper }}
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-0 text-dark">{{ post.author.username }}</h6>
+                                    <span class="text-muted small">{{ post.created_at|timesince }} ago · <span class="badge bg-light text-dark border">{{ post.get_category_display }}</span></span>
+                                </div>
+                            </div>
+
+                            <!-- MODERN 3-DOT DROPDOWN MENU FOR OP / ADMIN -->
+                            {% if request.user == post.author or request.user.role == 'CVO_ADMIN' or request.user.is_superuser %}
+                                <div class="dropdown">
+                                    <button class="three-dots-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-2">
+                                        <li>
+                                            <a class="dropdown-item d-flex align-items-center gap-2 py-2 small" href="{% url 'citizen:edit_community_post' post.id %}">
+                                                <i class="bi bi-pencil text-secondary"></i> Edit Post
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider my-1"></li>
+                                        <li>
+                                            <form action="{% url 'citizen:delete_community_post' post.id %}" method="POST" onsubmit="return confirm('Delete this post permanently?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="dropdown-item d-flex align-items-center gap-2 py-2 small text-danger">
+                                                    <i class="bi bi-trash"></i> Delete Post
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Post Content -->
+                        <h5 class="fw-bold text-dark">{{ post.title }}</h5>
+                        <p class="text-secondary mb-3" style="white-space: pre-line;">{{ post.content }}</p>
+
+                        <!-- Footer / Comment Link -->
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top small text-muted">
+                            <a href="{% url 'citizen:post_detail' post.id %}" class="text-decoration-none text-secondary fw-semibold d-flex align-items-center gap-1">
+                                <i class="bi bi-chat-left"></i> {{ post.comments.count }} Comment(s)
+                            </a>
+                            <span>City Vet Hub Feed</span>
+                        </div>
+
+                    </div>
+                </div>
+            {% empty %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-chat-square-text display-4 text-secondary mb-2"></i>
+                    <p>No community posts yet. Be the first to share something!</p>
+                </div>
+            {% endfor %}
+        </div>
+
+    </div>
+</div>
+{% endblock %}

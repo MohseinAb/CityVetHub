@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- Hero Banner -->
+<div class="p-5 mb-4 bg-white rounded-3 shadow-sm border border-light">
+    <div class="container-fluid py-3">
+        <h1 class="display-5 fw-bold text-dark">City Vet Hub</h1>
+        <p class="col-md-8 fs-5 text-secondary">
+            Integrated animal registration, disease surveillance, and adoption services for Iligan City.
+        </p>
+        <div class="d-flex gap-3 mt-4">
+            <a href="{% url 'citizen:pet_list' %}" class="btn btn-primary-custom px-4 py-2 shadow-sm">
+                <i class="bi bi-heart-fill me-2"></i> Browse Adoptions
+            </a>
+            <a href="{% url 'citizen:community_feed' %}" class="btn btn-outline-dark px-4 py-2">
+                <i class="bi bi-chat-dots me-2"></i> Community Feed
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Confidential Disease Reporting Card -->
+<div class="card border-0 shadow-sm mb-4 border-start border-4 border-danger">
+    <div class="card-body p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div>
+            <h5 class="fw-bold text-dark mb-1">
+                <i class="bi bi-megaphone-fill text-danger me-2"></i> Notice Unusual Animal Symptoms or Stray Incidents?
+            </h5>
+            <p class="text-muted small mb-0">
+                Help protect your barangay by reporting suspected rabies, parvovirus, or other animal health concerns directly to CVO Officers.
+            </p>
+        </div>
+        <div class="flex-shrink-0">
+            {% if user.is_authenticated %}
+                <a href="{% url 'citizen:report_disease' %}" class="btn btn-danger fw-semibold px-4 py-2 shadow-sm">
+                    <i class="bi bi-file-earmark-medical me-1"></i> Report a Case
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}?next={% url 'citizen:report_disease' %}" class="btn btn-outline-danger fw-semibold px-4 py-2">
+                    Sign In to Report
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Recent Community Discussions -->
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">Recent Community Discussions</h6>
+                <a href="{% url 'citizen:community_feed' %}" class="small text-decoration-none fw-semibold">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for post in recent_posts %}
+                        <a href="{% url 'citizen:post_detail' post.id %}" class="list-group-item list-group-item-action p-3">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1 fw-bold text-dark">{{ post.title }}</h6>
+                                <small class="text-muted">{{ post.created_at|timesince }} ago</small>
+                            </div>
+                            <p class="mb-1 text-secondary small text-truncate">{{ post.content }}</p>
+                            <small class="text-muted">By {{ post.author.username }}</small>
+                        </a>
+                    {% empty %}
+                        <div class="text-center py-4 text-muted small">No community discussions found.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Pets Preview -->
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">Featured Adoptions</h6>
+                <a href="{% url 'citizen:pet_list' %}" class="small text-decoration-none fw-semibold">Adoption Hub</a>
+            </div>
+            <div class="card-body p-3">
+                <div class="d-flex flex-column gap-3">
+                    {% for pet in available_pets %}
+                        <div class="d-flex align-items-center gap-3 p-2 rounded bg-light border-0">
+                            <div>
+                                <h6 class="fw-bold mb-0 text-dark">{{ pet.registered_pet.name }}</h6>
+                                <span class="small text-muted">{{ pet.registered_pet.breed }} · ₱{{ pet.adoption_fee }}</span>
+                            </div>
+                            <a href="{% url 'citizen:pet_detail' pet.id %}" class="btn btn-sm btn-primary-custom ms-auto">View</a>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-4 text-muted small">No pets currently listed for adoption.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

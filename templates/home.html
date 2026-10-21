@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-lg-10">
+        <!-- Welcome Banner -->
+        <div class="p-5 mb-4 bg-white rounded-3 shadow-sm border">
+            <div class="container-fluid py-2">
+                <h1 class="display-6 fw-bold text-success">City Vet Hub Dashboard</h1>
+                <p class="col-md-8 fs-5 text-muted">
+                    Spatial Disease Surveillance, Smart Traceability, and Adoption Workflows for Iligan City.
+                </p>
+                {% if user.is_authenticated %}
+                    <div class="alert alert-light border d-inline-block">
+                        Logged in as: <strong>{{ user.username }}</strong> (Role: <span class="badge bg-secondary">{{ user.role|default:"Citizen" }}</span>)
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Action Cards -->
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-success">Disease Surveillance</h5>
+                        <p class="card-text text-muted">Monitor outbreak clusters, active cases, and barangay heatmaps.</p>
+                        <a href="#" class="btn btn-outline-success btn-sm disabled">View Heatmap</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-success">Animal Traceability</h5>
+                        <p class="card-text text-muted">Track registered pets, vaccination histories, and microchip tags.</p>
+                        <a href="#" class="btn btn-outline-success btn-sm disabled">Registry</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-success">Adoption Workflows</h5>
+                        <p class="card-text text-muted">Manage stray intake, vet clearing, and adoption approvals.</p>
+                        <a href="#" class="btn btn-outline-success btn-sm disabled">Adoptions</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

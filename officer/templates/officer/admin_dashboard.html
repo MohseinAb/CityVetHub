@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-6">
+        <h2 class="fw-bold text-dark mb-1">System Administration</h2>
+        <span class="text-muted small">Master Control Panel</span>
+    </div>
+    <div class="col-md-6 text-md-end d-flex gap-2 justify-content-md-end">
+        <!-- Live Search Bar -->
+        <div class="input-group shadow-sm" style="max-width: 300px;">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" id="adminSearch" class="form-control border-start-0 ps-0" placeholder="Search tables...">
+        </div>
+        <a href="{% url 'admin:index' %}" target="_blank" class="btn btn-dark shadow-sm d-inline-flex align-items-center gap-2">
+            <i class="bi bi-database-fill-gear"></i> Master DB
+        </a>
+    </div>
+</div>
+
+{% if messages %}
+    {% for msg in messages %}
+        <div class="alert alert-{% if msg.tags == 'error' %}danger{% else %}success{% endif %} alert-dismissible fade show border-0 shadow-sm" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<!-- Vet Verification Queue -->
+<div class="card mb-4 shadow-sm border-0 border-top border-4 border-danger">
+    <div class="card-header bg-white py-3">
+        <h6 class="fw-bold mb-0 text-dark">Pending Clinic Verifications</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 searchable-table">
+                <thead class="table-light small text-muted">
+                    <tr>
+                        <th class="ps-4">Applicant</th>
+                        <th>Clinic Name</th>
+                        <th>PRC License</th>
+                        <th>Document</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in pending_vets %}
+                        <tr>
+                            <td class="ps-4 fw-medium">{{ req.user.username }}</td>
+                            <td>{{ req.clinic_name }}</td>
+                            <td><span class="badge bg-secondary">{{ req.prc_license_number }}</span></td>
+                            <td>
+                                {% if req.proof_document %}
+                                    <a href="{{ req.proof_document.url }}" target="_blank" class="btn btn-sm btn-outline-primary">View Proof</a>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group btn-group-sm shadow-sm">
+                                    <a href="{% url 'admin:accounts_vetverificationrequest_change' req.id %}" target="_blank" class="btn btn-outline-secondary" title="Edit in Admin"><i class="bi bi-pencil"></i></a>
+                                    <a href="{% url 'officer:verify_vet' req.id 'approve' %}" class="btn btn-outline-success">Approve</a>
+                                    <a href="{% url 'officer:verify_vet' req.id 'reject' %}" class="btn btn-outline-danger" onclick="return confirm('Reject this application?');">Reject</a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="5" class="text-center py-4 text-muted">No pending verifications.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Community & Registry Moderation -->
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-dark">Forum Moderation</h6>
+            </div>
+            <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-sm table-hover align-middle mb-0 searchable-table">
+                    <tbody>
+                        {% for post in posts %}
+                            <tr>
+                                <td class="ps-3 py-3">
+                                    <div class="fw-medium text-dark">{{ post.title }}</div>
+                                    <div class="small text-muted">By {{ post.author.username }}</div>
+                                </td>
+                                <td class="text-end pe-3 py-3">
+                                    <div class="btn-group btn-group-sm shadow-sm">
+                                        <a href="{% url 'admin:citizen_communitypost_change' post.id %}" target="_blank" class="btn btn-outline-secondary" title="Edit in Admin"><i class="bi bi-pencil"></i></a>
+                                        <a href="{% url 'officer:moderate_action' 'post' post.id 'delete' %}" class="btn btn-outline-danger" onclick="return confirm('Delete this post?');">Remove</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="2" class="text-center py-4 text-muted small">No active posts.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-dark">Pet Registry Moderation</h6>
+            </div>
+            <div class="card-body p-0" style="max-height: 200px; overflow-y: auto;">
+                <table class="table table-sm table-hover align-middle mb-0 searchable-table">
+                    <tbody>
+                        {% for pet in pets %}
+                            <tr>
+                                <td class="ps-3">{{ pet.name }} <br><span class="badge bg-light text-dark border">{{ pet.registration_number }}</span></td>
+                                <td class="text-end pe-3">
+                                    <div class="btn-group btn-group-sm shadow-sm">
+                                        <a href="{% url 'admin:citizen_registeredpet_change' pet.id %}" target="_blank" class="btn btn-outline-secondary" title="Edit in Admin"><i class="bi bi-pencil"></i></a>
+                                        <a href="{% url 'officer:moderate_action' 'pet' pet.id 'delete' %}" class="btn btn-outline-danger" onclick="return confirm('Delete pet?');">Delete</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="2" class="text-center py-4 text-muted small">No registered pets.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Management -->
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-dark">User Management & Promotion</h6>
+            </div>
+            <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+                <table class="table table-hover align-middle mb-0 searchable-table">
+                    <thead class="table-light small text-muted">
+                        <tr>
+                            <th class="ps-3">User</th>
+                            <th>Role Status</th>
+                            <th class="text-end pe-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                            <tr>
+                                <td class="ps-3 fw-medium">{{ u.username }}</td>
+                                <td>
+                                    {% if u.is_superuser %}
+                                        <span class="badge bg-dark">SUPERUSER</span>
+                                    {% elif u.role == 'CVO_ADMIN' %}
+                                        <span class="badge bg-danger">CVO ADMIN</span>
+                                    {% elif u.role == 'VET_OFFICER' %}
+                                        <span class="badge bg-warning text-dark">CVO OFFICER</span>
+                                    {% elif u.role == 'VET_CLINIC' %}
+                                        <span class="badge bg-info text-dark">CERTIFIED VET</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark border">CITIZEN</span>
+                                    {% endif %}
+                                    
+                                    {% if not u.is_active %}
+                                        <span class="badge bg-danger ms-1">BANNED</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-3">
+                                    <div class="btn-group btn-group-sm shadow-sm">
+                                        <a href="{% url 'admin:accounts_customuser_change' u.id %}" target="_blank" class="btn btn-outline-secondary" title="Edit User"><i class="bi bi-pencil"></i></a>
+                                        
+                                        {% if not u.is_superuser and u != request.user %}
+                                            <!-- Role Management (Promote Citizen / Demote Officer OR Vet) -->
+                                            {% if u.role == 'CITIZEN' and u.is_active %}
+                                                <a href="{% url 'officer:moderate_action' 'user' u.id 'promote' %}" class="btn btn-outline-success" onclick="return confirm('Promote to CVO Officer?');">Promote</a>
+                                            {% elif u.role == 'VET_OFFICER' or u.role == 'VET_CLINIC' %}
+                                                <a href="{% url 'officer:moderate_action' 'user' u.id 'demote' %}" class="btn btn-outline-warning text-dark" onclick="return confirm('Revoke privileges and return to Citizen?');">Demote</a>
+                                            {% endif %}
+                                            
+                                            <!-- Account Status -->
+                                            {% if u.is_active %}
+                                                <a href="{% url 'officer:moderate_action' 'user' u.id 'ban' %}" class="btn btn-outline-danger" onclick="return confirm('Deactivate user?');">Ban</a>
+                                            {% else %}
+                                                <a href="{% url 'officer:moderate_action' 'user' u.id 'unban' %}" class="btn btn-outline-secondary">Unban</a>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Instant Live Search for all Admin Tables
+    document.getElementById('adminSearch').addEventListener('keyup', function() {
+        let filter = this.value.toLowerCase();
+        let tables = document.querySelectorAll('.searchable-table tbody');
+        
+        tables.forEach(tbody => {
+            let rows = tbody.getElementsByTagName('tr');
+            for (let i = 0; i < rows.length; i++) {
+                let textContent = rows[i].textContent || rows[i].innerText;
+                if (textContent.toLowerCase().indexOf(filter) > -1) {
+                    rows[i].style.display = "";
+                } else {
+                    rows[i].style.display = "none";
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

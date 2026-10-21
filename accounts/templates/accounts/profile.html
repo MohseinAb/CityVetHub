@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="fw-bold text-dark mb-1">Account Profile & Verification</h3>
+                <span class="text-muted small">Manage your personal information and veterinary credentials</span>
+            </div>
+            <div>
+                {% if user.role == 'CVO_ADMIN' or user.is_superuser %}
+                    <span class="badge bg-danger px-3 py-2">CVO ADMIN</span>
+                {% elif user.role == 'VET_OFFICER' %}
+                    <span class="badge bg-warning text-dark px-3 py-2">CVO OFFICER</span>
+                {% elif user.role == 'VET_CLINIC' %}
+                    <span class="badge bg-info text-dark px-3 py-2">CERTIFIED VET</span>
+                {% else %}
+                    <span class="badge bg-secondary px-3 py-2">CITIZEN / PET OWNER</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" role="alert">
+                    {{ msg }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Personal Details Card -->
+        <div class="card mb-4 shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-dark">Personal Information</h6>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-semibold">Username</label>
+                        <input type="text" class="form-control bg-light" value="{{ user.username }}" disabled>
+                    </div>
+                    {{ profile_form|crispy }}
+                    <button type="submit" name="update_profile" class="btn btn-primary-custom fw-medium mt-3">
+                        Save Profile Changes
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Veterinary Verification Section -->
+        {% if user.role == 'CITIZEN' or user.role == 'VET_CLINIC' %}
+            <div class="card shadow-sm border-0 border-top border-4 border-info">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0 text-dark">Veterinary Clinic Accreditation</h6>
+                    {% if vet_request %}
+                        <span class="badge {% if vet_request.status == 'APPROVED' %}bg-success{% elif vet_request.status == 'REJECTED' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                            {{ vet_request.get_status_display }}
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="card-body p-4">
+                    {% if user.role == 'VET_CLINIC' or vet_request and vet_request.status == 'APPROVED' %}
+                        <div class="alert alert-success border-0 mb-0">
+                            <h6 class="fw-bold mb-1">Accredited Veterinary Practitioner</h6>
+                            <p class="small mb-0">
+                                Your clinic (<strong>{{ vet_request.clinic_name }}</strong> | PRC License: <strong>{{ vet_request.prc_license_number }}</strong>) is verified by the Iligan City Veterinary Office. You have full privileges to log official vaccinations.
+                            </p>
+                        </div>
+                    {% elif vet_request and vet_request.status == 'PENDING' %}
+                        <div class="alert alert-warning text-dark border-0 mb-0">
+                            <h6 class="fw-bold mb-1">Verification Under Review</h6>
+                            <p class="small mb-2">
+                                Your application for <strong>{{ vet_request.clinic_name }}</strong> (PRC License: <strong>{{ vet_request.prc_license_number }}</strong>) was submitted on {{ vet_request.submitted_at|date:"M d, Y" }} and is awaiting CVO Admin review.
+                            </p>
+                            {% if vet_request.proof_document %}
+                                <a href="{{ vet_request.proof_document.url }}" target="_blank" class="btn btn-sm btn-outline-dark mt-1">View Submitted Proof</a>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        {% if vet_request and vet_request.status == 'REJECTED' %}
+                            <div class="alert alert-danger border-0 mb-3">
+                                <strong>Previous Application Declined:</strong> Please verify your PRC License number and upload a clearer copy of your PRC ID or clinic permit below to re-apply.
+                            </div>
+                        {% else %}
+                            <p class="text-muted small mb-3">
+                                Are you a licensed veterinarian operating in Iligan City? Submit your PRC License details and supporting credentials below to request an official <strong>CERTIFIED VET</strong> account upgrade.
+                            </p>
+                        {% endif %}
+
+                        <form method="POST" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            {{ vet_form|crispy }}
+                            <button type="submit" name="submit_vet" class="btn btn-info text-dark fw-bold mt-3">
+                                Submit Verification Request
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

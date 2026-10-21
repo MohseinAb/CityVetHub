@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="fw-bold mb-0 text-dark">
+                    {% if edit_mode %}
+                        <i class="bi bi-pencil-square text-secondary me-2"></i> Edit Thread
+                    {% else %}
+                        <i class="bi bi-chat-square-text text-secondary me-2"></i> Create a New Thread
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{% url 'citizen:community_feed' %}" class="btn btn-light border">Cancel</a>
+                        <button type="submit" class="btn btn-primary-custom px-4">
+                            {% if edit_mode %}Save Changes{% else %}Post Thread{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
