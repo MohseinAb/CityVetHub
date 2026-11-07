@@ -42,6 +42,9 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     'citizen',
     'officer',
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -52,6 +55,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'cityvethub.urls'
@@ -138,3 +142,17 @@ LOGIN_REDIRECT_URL = 'citizen:home'
 LOGOUT_REDIRECT_URL = 'login'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# --- CORS Configuration ---
+# Allows your React Native Expo app to fetch data without being blocked
+CORS_ALLOW_ALL_ORIGINS = True 
+
+# --- Django REST Framework Configuration ---
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        # Mobile app uses JWT tokens:
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # Website keeps using standard session cookies:
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+}
