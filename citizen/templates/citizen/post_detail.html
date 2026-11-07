@@ -11,32 +11,40 @@
             </a>
         </div>
 
+        {% if messages %}
+            {% for msg in messages %}
+                <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" role="alert">
+                    {{ msg }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Main Post Card -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body p-4">
-                <!-- Header -->
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge bg-light text-dark border">{{ post.get_category_display }}</span>
                         <span class="text-muted small">{{ post.created_at|date:"M d, Y h:i A" }}</span>
                     </div>
 
-                    <!-- 3-Dot Dropdown Menu -->
+                    <!-- Modern 3-Dot Menu for Post -->
                     {% if request.user == post.author or request.user.role == 'CVO_ADMIN' or request.user.is_superuser %}
                         <div class="dropdown">
-                            <button class="three-dots-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-three-dots-vertical"></i>
+                            <button class="three-dots-btn no-caret" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Post options">
+                                <i class="bi bi-three-dots"></i>
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-2">
+                            <ul class="dropdown-menu dropdown-menu-end modern-action-menu">
                                 <li>
-                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2 small" href="{% url 'citizen:edit_community_post' post.id %}">
+                                    <a class="dropdown-item d-flex align-items-center gap-2 small text-dark" href="{% url 'citizen:edit_community_post' post.id %}">
                                         <i class="bi bi-pencil text-secondary"></i> Edit Post
                                     </a>
                                 </li>
-                                <li><hr class="dropdown-divider my-1"></li>
                                 <li>
                                     <form action="{% url 'citizen:delete_community_post' post.id %}" method="POST" onsubmit="return confirm('Delete this post permanently?');">
                                         {% csrf_token %}
-                                        <button type="submit" class="dropdown-item d-flex align-items-center gap-2 py-2 small text-danger">
+                                        <button type="submit" class="dropdown-item d-flex align-items-center gap-2 small text-danger">
                                             <i class="bi bi-trash"></i> Delete Post
                                         </button>
                                     </form>
@@ -56,31 +64,77 @@
                     {% endif %}
                 </div>
 
-                <p class="text-secondary" style="white-space: pre-line;">{{ post.content }}</p>
+                <p class="text-secondary mb-0" style="white-space: pre-line;">{{ post.content }}</p>
             </div>
         </div>
 
         <!-- Comments Section -->
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white py-3">
-                <h5 class="fw-bold mb-0 text-dark">Comments ({{ post.comments.count }})</h5>
+                <h6 class="fw-bold mb-0 text-dark">Comments ({{ post.comments.count }})</h6>
             </div>
             <div class="card-body p-4">
                 {% if post.comments.all %}
                     <div class="d-flex flex-column gap-3 mb-4">
-                        {% for comment in post.comments.all %}
-                            <div class="bg-light p-3 rounded border-0">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="fw-semibold text-dark small">{{ comment.author.username }}</span>
-                                    <span class="text-muted small">{{ comment.created_at|timesince }} ago</span>
+                        {% for comment in comments %}
+                            <div class="bg-light p-3 rounded-3 border-0">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="fw-bold text-dark small">{{ comment.author.username }}</span>
+                                        <span class="text-muted" style="font-size: 0.75rem;">· {{ comment.created_at|timesince }} ago</span>
+                                    </div>
+
+                                    <!-- Modern 3-Dot Menu for Each Comment -->
+                                    {% if request.user == comment.author or request.user.role == 'CVO_ADMIN' or request.user.is_superuser %}
+                                        <div class="dropdown">
+                                            <button class="three-dots-btn no-caret" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Comment options">
+                                                <i class="bi bi-three-dots"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end modern-action-menu">
+                                                <li>
+                                                    <a class="dropdown-item d-flex align-items-center gap-2 small text-dark" href="{% url 'citizen:edit_comment' comment.id %}">
+                                                        <i class="bi bi-pencil text-secondary"></i> Edit Comment
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <form action="{% url 'citizen:delete_comment' comment.id %}" method="POST" onsubmit="return confirm('Delete this comment?');">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="dropdown-item d-flex align-items-center gap-2 small text-danger">
+                                                            <i class="bi bi-trash"></i> Delete Comment
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    {% endif %}
                                 </div>
-                                <p class="mb-0 text-secondary small">{{ comment.content }}</p>
+                                <p class="mb-0 text-secondary small" style="white-space: pre-line;">{{ comment.content }}</p>
                             </div>
                         {% endfor %}
                     </div>
+                    {% if comments.has_other_pages %}
+                        <nav class="mb-4">
+                            <ul class="pagination pagination-sm justify-content-end mb-0">
+                                {% if comments.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link text-dark border" href="?page={{ comments.previous_page_number }}">Prev</a>
+                                    </li>
+                                {% endif %}
+                                <li class="page-item disabled">
+                                    <span class="page-link text-muted border">Page {{ comments.number }} of {{ comments.paginator.num_pages }}</span>
+                                </li>
+                                {% if comments.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link text-dark border" href="?page={{ comments.next_page_number }}">Next</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
                 {% else %}
                     <p class="text-muted small mb-4">No comments yet. Share your thoughts below!</p>
                 {% endif %}
+                
 
                 {% if user.is_authenticated %}
                     <form method="POST" action="{% url 'citizen:add_comment' post.id %}">

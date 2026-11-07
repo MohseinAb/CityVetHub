@@ -142,6 +142,11 @@ class VaccinationRecord(models.Model):
     expiration_date = models.DateField(help_text="Next booster due date")
     administered_by = models.CharField(max_length=150, help_text="Veterinarian Name or Clinic / City Vet")
     batch_number = models.CharField(max_length=50, blank=True, null=True)
+    notes = models.TextField(
+        blank=True, 
+        verbose_name="Clinical Notes / Description",
+        help_text="Optional dosage details, pet weight, reactions, or next booster instructions."
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -246,3 +251,24 @@ class PetOwnershipHistory(models.Model):
         prev_name = self.previous_owner.username if self.previous_owner else "Unknown"
         new_name = self.new_owner.username if self.new_owner else "Unknown"
         return f"{self.pet.registration_number}: {prev_name} -> {new_name} ({self.transferred_at.strftime('%Y-%m-%d')})"
+
+class Notification(models.Model):
+    NOTIF_TYPES = (
+        ('COMMENT', 'New Comment on Post'),
+        ('MATCH', 'Pet Adoption Match'),
+        ('ADOPTION', 'Adoption Update'),
+    )
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications'
+    )
+    notif_type = models.CharField(max_length=20, choices=NOTIF_TYPES)
+    message = models.CharField(max_length=255)
+    link = models.CharField(max_length=255, blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"To {self.recipient.username}: {self.message}"

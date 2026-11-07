@@ -24,6 +24,10 @@ from .models import (
 from .models import DiseaseAlert
 from .forms import DiseaseReportForm
 from django.db import transaction
+from django.urls import reverse
+from accounts.models import CustomUser
+from .models import Notification
+from django.core.paginator import Paginator
 
 
 # --- 1. Citizen Home & Forum Views ---
@@ -44,15 +48,16 @@ def citizen_home(request):
 
 
 def community_feed(request):
-    """Reddit-like forum feed with category filtering."""
-    category = request.GET.get('category')
-    if category:
-        posts = CommunityPost.objects.filter(category=category)
-    else:
-        posts = CommunityPost.objects.all()
+    """Reddit-like forum feed with category filtering and pagination."""
+    post_list = CommunityPost.objects.select_related('author').prefetch_related('comments').order_by('-created_at')
+    
+    # Paginate: 6 posts per page
+    paginator = Paginator(post_list, 6)
+    page_number = request.GET.get('page')
+    posts = paginator.get_page(page_number)
+    
     return render(request, 'citizen/community_feed.html', {
         'posts': posts,
-        'selected_category': category
     })
 
 
@@ -72,49 +77,51 @@ def create_post(request):
 
 
 def post_detail(request, pk):
-    """Read thread details and submit replies."""
     post = get_object_or_404(CommunityPost, pk=pk)
-    comments = post.comments.all()
-    if request.method == 'POST':
-        if not request.user.is_authenticated:
-            return redirect('login')
-        comment_form = PostCommentForm(request.POST)
-        if comment_form.is_valid():
-            comment = comment_form.save(commit=False)
-            comment.post = post
-            comment.author = request.user
-            comment.save()
-            return redirect('citizen:post_detail', pk=post.pk)
-    else:
-        comment_form = PostCommentForm()
-
+    comment_list = post.comments.select_related('author').order_by('created_at')
+    
+    # Paginate: 5 comments per page
+    paginator = Paginator(comment_list, 5)
+    page_number = request.GET.get('page')
+    comments = paginator.get_page(page_number)
+    
+    comment_form = PostCommentForm()
     return render(request, 'citizen/post_detail.html', {
         'post': post,
         'comments': comments,
-        'comment_form': comment_form
+        'comment_form': comment_form,
     })
 
 
 # --- 2. Pet Adoption Views ---
 def pet_list(request):
-    pets = Pet.objects.filter(status='AVAILABLE').select_related('registered_pet', 'listed_by')
+    pet_queryset = Pet.objects.filter(status='AVAILABLE').select_related('registered_pet', 'listed_by').order_by('-id')
     
     incoming_applications = []
     my_applications = []
+    matched_pets = []
     
     if request.user.is_authenticated:
-        # 1. Requests sent TO the current user's listed pets
         incoming_applications = AdoptionApplication.objects.filter(
             pet__listed_by=request.user
         ).select_related('pet__registered_pet', 'applicant').order_by('-applied_at')
         
-        # 2. Requests sent BY the current user to adopt other pets
         my_applications = AdoptionApplication.objects.filter(
             applicant=request.user
         ).select_related('pet__registered_pet', 'pet__listed_by').order_by('-applied_at')
 
+        for p in pet_queryset:
+            if p.listed_by != request.user and does_pet_match_user(p.registered_pet, request.user):
+                matched_pets.append(p)
+
+    # Paginate: 6 adoption listings per page
+    paginator = Paginator(pet_queryset, 6)
+    page_number = request.GET.get('page')
+    pets = paginator.get_page(page_number)
+
     return render(request, 'citizen/pet_list.html', {
         'pets': pets,
+        'matched_pets': matched_pets,
         'incoming_applications': incoming_applications,
         'my_applications': my_applications,
     })
@@ -147,25 +154,40 @@ def pet_detail(request, pk):
 
 @login_required
 def list_pet_for_adoption(request):
-    """Pet selector form for citizen owners."""
-    # Check if the user has any pets eligible to list
-    unlisted_pets_count = RegisteredPet.objects.filter(owner=request.user, adoption_listing__isnull=True).count()
-
+    """Creates an adoption listing and notifies users whose pet preferences match."""
     if request.method == 'POST':
         form = PetAdoptionListingForm(request.user, request.POST)
         if form.is_valid():
             listing = form.save(commit=False)
             listing.listed_by = request.user
+            listing.status = 'AVAILABLE'
             listing.save()
-            messages.success(request, f"{listing.registered_pet.name} has been listed for adoption!")
-            return redirect('citizen:pet_detail', pk=listing.pk)
+
+            reg_pet = listing.registered_pet
+            # Notify users with matching preferences
+            potential_adopters = CustomUser.objects.exclude(id=request.user.id).filter(is_active=True)
+            for candidate in potential_adopters:
+                # Notify users who configured at least one preference that matches this pet
+                has_active_pref = (
+                    candidate.pref_species != 'ANY' or 
+                    candidate.pref_gender != 'ANY' or 
+                    bool(candidate.pref_breed) or 
+                    candidate.pref_neutered_only
+                )
+                if has_active_pref and does_pet_match_user(reg_pet, candidate):
+                    Notification.objects.create(
+                        recipient=candidate,
+                        notif_type='MATCH',
+                        message=f"New Adoption Match! {reg_pet.name} ({reg_pet.species} - {reg_pet.breed or 'Mixed'}) matches your pet preferences.",
+                        link=reverse('citizen:pet_detail', kwargs={'pk': listing.id})
+                    )
+
+            messages.success(request, f"{reg_pet.name} is now listed for adoption!")
+            return redirect('citizen:pet_list')
     else:
         form = PetAdoptionListingForm(request.user)
 
-    return render(request, 'citizen/list_pet.html', {
-        'form': form,
-        'unlisted_pets_count': unlisted_pets_count
-    })
+    return render(request, 'citizen/list_pet.html', {'form': form})
 
 
 # --- 3. Pet Registry Views ---
@@ -489,9 +511,8 @@ def finalize_adoption(request, app_id, action):
 
 @login_required
 def add_comment(request, post_id):
-    """Handles the submission of a new comment on a community post."""
+    """Saves comment and notifies the post author."""
     post = get_object_or_404(CommunityPost, id=post_id)
-    
     if request.method == 'POST':
         form = PostCommentForm(request.POST)
         if form.is_valid():
@@ -499,9 +520,80 @@ def add_comment(request, post_id):
             comment.post = post
             comment.author = request.user
             comment.save()
+
+            # Trigger Notification for the OP (if commenter isn't the OP)
+            if post.author != request.user:
+                Notification.objects.create(
+                    recipient=post.author,
+                    notif_type='COMMENT',
+                    message=f"{request.user.username} commented on your post '{post.title[:30]}'",
+                    link=reverse('citizen:post_detail', kwargs={'pk': post.id})
+                )
             messages.success(request, "Your reply was posted successfully.")
-        else:
-            messages.error(request, "There was an error posting your reply.")
-            
-    # Redirect back to the post detail page regardless of success/fail
     return redirect('citizen:post_detail', pk=post.id)
+
+def does_pet_match_user(reg_pet, user):
+    """Helper: checks if a RegisteredPet matches a user's saved adoption preferences."""
+    if not user.is_authenticated:
+        return False
+    # Only match if user has set at least one specific preference (or even if ANY)
+    if user.pref_species != 'ANY' and reg_pet.species.upper() != user.pref_species.upper():
+        return False
+    if user.pref_gender != 'ANY' and reg_pet.gender.upper() != user.pref_gender.upper():
+        return False
+    if user.pref_neutered_only and not reg_pet.is_neutered:
+        return False
+    if user.pref_breed and user.pref_breed.strip().lower() not in (reg_pet.breed or '').lower():
+        return False
+    return True
+
+@login_required
+def read_notification(request, notif_id):
+    """Marks a notification as read and redirects to its target link."""
+    notif = get_object_or_404(Notification, id=notif_id, recipient=request.user)
+    notif.is_read = True
+    notif.save()
+    if notif.link:
+        return redirect(notif.link)
+    return redirect('citizen:home')
+
+
+@login_required
+def mark_all_notifications_read(request):
+    request.user.notifications.filter(is_read=False).update(is_read=True)
+    return redirect(request.META.get('HTTP_REFERER', 'citizen:home'))
+
+@login_required
+def edit_comment(request, comment_id):
+    comment = get_object_or_404(PostComment, id=comment_id)
+    if comment.author != request.user and not (getattr(request.user, 'role', '') == 'CVO_ADMIN' or request.user.is_superuser):
+        messages.error(request, "You do not have permission to edit this comment.")
+        return redirect('citizen:post_detail', pk=comment.post.id)
+
+    if request.method == 'POST':
+        form = PostCommentForm(request.POST, instance=comment)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Comment updated.")
+            return redirect('citizen:post_detail', pk=comment.post.id)
+    else:
+        form = PostCommentForm(instance=comment)
+
+    return render(request, 'citizen/comment_edit_form.html', {
+        'form': form,
+        'comment': comment,
+    })
+
+
+@login_required
+def delete_comment(request, comment_id):
+    comment = get_object_or_404(PostComment, id=comment_id)
+    post_id = comment.post.id
+    if comment.author != request.user and not (getattr(request.user, 'role', '') == 'CVO_ADMIN' or request.user.is_superuser):
+        messages.error(request, "You do not have permission to delete this comment.")
+        return redirect('citizen:post_detail', pk=post_id)
+
+    if request.method == 'POST':
+        comment.delete()
+        messages.success(request, "Comment deleted.")
+    return redirect('citizen:post_detail', pk=post_id)

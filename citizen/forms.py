@@ -146,12 +146,23 @@ class DiseaseReportForm(forms.ModelForm):
         }
 
 
-class VetVerificationForm(forms.ModelForm):
+class VaccinationRecordForm(forms.ModelForm):
     class Meta:
-        model = VetVerificationRequest
-        fields = ['clinic_name', 'prc_license_number', 'proof_document']
+        model = VaccinationRecord
+        fields = (
+            'vaccine_name',
+            'administered_date',
+            'expiration_date',
+            'administered_by',
+            'batch_number',
+            'notes',
+        )
         widgets = {
-            'clinic_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Iligan Animal Care Clinic'}),
-            'prc_license_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 0123456'}),
-            'proof_document': forms.FileInput(attrs={'class': 'form-control'}),
+            'administered_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'expiration_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={
+                'rows': 3, 
+                'class': 'form-control',
+                'placeholder': 'Add clinical notes, dosage, weight at time of shot, or follow-up remarks...'
+            }),
         }

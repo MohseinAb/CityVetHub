@@ -8,6 +8,32 @@ class CustomUser(AbstractUser):
         ('VET_OFFICER', 'CVO Officer'),
         ('CVO_ADMIN', 'CVO System Admin'),
     )
+
+    PREF_SPECIES_CHOICES = (
+        ('ANY', 'Any Species'),
+        ('DOG', 'Dog'),
+        ('CAT', 'Cat'),
+        ('OTHER', 'Other'),
+    )
+    PREF_GENDER_CHOICES = (
+        ('ANY', 'Any Gender'),
+        ('MALE', 'Male'),
+        ('FEMALE', 'Female'),
+    )
+    pref_species = models.CharField(
+        max_length=20, choices=PREF_SPECIES_CHOICES, default='ANY', verbose_name="Preferred Species"
+    )
+    pref_gender = models.CharField(
+        max_length=15, choices=PREF_GENDER_CHOICES, default='ANY', verbose_name="Preferred Gender"
+    )
+    pref_breed = models.CharField(
+        max_length=100, blank=True, help_text="Leave blank for any breed (e.g., Aspin, Puspin, Shih Tzu)", verbose_name="Preferred Breed Keyword"
+    )
+    pref_neutered_only = models.BooleanField(
+        default=False, verbose_name="Prefer Neutered / Spayed Pets Only"
+    )
+
+
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='CITIZEN')
 
     def __str__(self):

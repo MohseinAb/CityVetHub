@@ -6,6 +6,9 @@ from django.utils import timezone
 from citizen.models import DiseaseAlert, RegisteredPet, Pet, VaccinationRecord,CommunityPost
 from citizen.forms import VaccinationRecordForm
 from accounts.models import CustomUser, VetVerificationRequest
+from django.http import HttpResponse
+from django.db.models import Q
+from django.contrib.auth.decorators import login_required
 
 # 44 Barangays Precisely Calibrated to OpenStreetMap Grid
 ILIGAN_BARANGAY_COORDS = {
@@ -285,3 +288,41 @@ def verify_alert(request, alert_id, action):
     """Placeholder for marking active outbreaks as resolved."""
     # We will build out this logic next
     return redirect('officer:dashboard')
+
+@login_required
+def pet_lookup(request):
+    if not (getattr(request.user, 'role', '') in ['VET_OFFICER', 'CVO_ADMIN'] or request.user.is_superuser):
+        messages.error(request, "Unauthorized access.")
+        return redirect('citizen:home')
+
+    query = request.GET.get('q', '').strip()
+    species_filter = request.GET.get('species', '').strip()
+    barangay_filter = request.GET.get('barangay', '').strip()
+
+    pets = RegisteredPet.objects.select_related('owner').prefetch_related(
+        'vaccinations', 'ownership_history__previous_owner', 'ownership_history__new_owner'
+    ).order_by('-registered_at')
+
+    if query:
+        pets = pets.filter(
+            Q(registration_number__icontains=query) |
+            Q(name__icontains=query) |
+            Q(microchip_or_tag_id__icontains=query) |
+            Q(owner__username__icontains=query) |
+            Q(owner__first_name__icontains=query) |
+            Q(owner__last_name__icontains=query) |
+            Q(breed__icontains=query)
+        )
+
+    if species_filter:
+        pets = pets.filter(species__iexact=species_filter)
+
+    if barangay_filter:
+        pets = pets.filter(barangay__icontains=barangay_filter)
+
+    return render(request, 'officer/pet_lookup.html', {
+        'pets': pets,
+        'query': query,
+        'species_filter': species_filter,
+        'barangay_filter': barangay_filter,
+    })

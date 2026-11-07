@@ -142,6 +142,55 @@
             </div>
         {% endif %}
 
+        <!-- Vaccination & Medical History Card -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-capsule text-primary me-2"></i> Official Vaccination & Medical Records
+                </h6>
+                <span class="badge bg-light text-dark border">{{ pet.registered_pet.vaccinations.count }} Record(s)</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-muted">
+                            <tr>
+                                <th class="ps-4">Vaccine</th>
+                                <th>Date Given</th>
+                                <th>Valid Until</th>
+                                <th>Administered By</th>
+                                <th class="pe-4">Notes / Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vax in pet.registered_pet.vaccinations.all %}
+                                <tr>
+                                    <td class="ps-4 fw-semibold text-dark">
+                                        {{ vax.vaccine_name }}
+                                        {% if vax.batch_number %}
+                                            <br><span class="text-muted small fw-normal">Batch: {{ vax.batch_number }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="small">{{ vax.administered_date|date:"M d, Y" }}</td>
+                                    <td class="small">{{ vax.expiration_date|date:"M d, Y" }}</td>
+                                    <td class="small">{{ vax.administered_by }}</td>
+                                    <td class="pe-4 small text-secondary" style="max-width: 260px;">
+                                        {{ vax.notes|default:"No additional clinical notes." }}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted small">
+                                        No vaccination records logged for this pet yet.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- OFFICIAL OWNERSHIP HISTORY AUDIT LOG -->
         {% if request.user == pet.registered_pet.owner or request.user.role == 'VET_OFFICER' or request.user.role == 'CVO_ADMIN' or request.user.is_superuser %}
             <div class="card shadow-sm border-0">

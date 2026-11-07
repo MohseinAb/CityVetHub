@@ -106,6 +106,9 @@
                                             <td class="small">{{ vax.administered_date|date:"M d, Y" }}</td>
                                             <td class="small text-danger fw-semibold">{{ vax.expiration_date|date:"M d, Y" }}</td>
                                             <td class="small text-muted">{{ vax.administered_by }}</td>
+                                            <td class="pe-4 small text-secondary" style="max-width: 260px;">
+                                                {{ vax.notes|default:"No additional clinical notes." }}
+                                            </td>
                                         </tr>
                                     {% empty %}
                                         <tr><td colspan="4" class="text-center py-4 text-muted small">No vaccines recorded yet.</td></tr>

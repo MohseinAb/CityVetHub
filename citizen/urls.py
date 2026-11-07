@@ -44,4 +44,9 @@ urlpatterns = [
     
     # Add this line for the comment submission
     path('community/post/<int:post_id>/comment/', views.add_comment, name='add_comment'),
+    path('notifications/<int:notif_id>/read/', views.read_notification, name='read_notification'),
+    path('notifications/read-all/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
+
+    path('community/comment/<int:comment_id>/edit/', views.edit_comment, name='edit_comment'),
+    path('community/comment/<int:comment_id>/delete/', views.delete_comment, name='delete_comment'),
 ]

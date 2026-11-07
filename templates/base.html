@@ -61,6 +61,54 @@
         .hover-opacity:hover {
             opacity: 0.8;
         }
+        .three-dots-btn {
+        width: 34px;
+        height: 34px;
+        padding: 0 !important;
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        color: #64748b;
+        border-radius: 50% !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.15s ease, color 0.15s ease;
+    }
+        .three-dots-btn:hover,
+        .three-dots-btn:focus,
+        .three-dots-btn[aria-expanded="true"] {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+        /* Remove the extra downward triangle next to the 3 dots */
+        .three-dots-btn.dropdown-toggle::after,
+        .dropdown-toggle.no-caret::after {
+            display: none !important;
+            content: none !important;
+        }
+
+        /* Modern floating dropdown menu */
+        .modern-action-menu {
+            min-width: 150px;
+            padding: 0.4rem !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 0.75rem !important;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12) !important;
+        }
+        .modern-action-menu .dropdown-item {
+            border-radius: 0.5rem;
+            padding: 0.45rem 0.75rem;
+            font-weight: 500;
+            transition: background-color 0.15s ease;
+        }
+        .modern-action-menu .dropdown-item:hover {
+            background-color: #f8fafc;
+        }
+        .modern-action-menu .dropdown-item.text-danger:hover {
+            background-color: #fef2f2;
+        }
     </style>
 </head>
 <body>
@@ -130,6 +178,45 @@
                             {% csrf_token %}
                             <button type="submit" class="btn btn-sm btn-outline-light">Sign Out</button>
                         </form>
+                        {% if user.is_authenticated %}
+                        <!-- Notification Bell Dropdown -->
+                        <div class="dropdown me-3">
+                            <button class="btn btn-sm btn-outline-light position-relative border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-bell-fill fs-5"></i>
+                                {% with unread_count=user.notifications.all %}
+                                    <span class="badge rounded-pill bg-danger">
+                                        {{ user.notifications.count }}
+                                    </span>
+                                {% endwith %}
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-0" style="width: 340px; max-height: 420px; overflow-y: auto;">
+                                <li class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
+                                    <span class="fw-bold small text-dark">Notifications</span>
+                                    <a href="{% url 'citizen:mark_all_notifications_read' %}" class="small text-decoration-none">Mark all read</a>
+                                </li>
+                                {% for notif in user.notifications.all|slice:":8" %}
+                                    <li>
+                                        <a class="dropdown-item p-3 border-bottom text-wrap {% if not notif.is_read %}bg-info bg-opacity-10 fw-semibold{% endif %}" 
+                                        href="{% url 'citizen:read_notification' notif.id %}">
+                                            <div class="d-flex align-items-start gap-2">
+                                                {% if notif.notif_type == 'MATCH' %}
+                                                    <i class="bi bi-stars text-warning fs-5"></i>
+                                                {% else %}
+                                                    <i class="bi bi-chat-dots-fill text-primary fs-5"></i>
+                                                {% endif %}
+                                                <div>
+                                                    <div class="small text-dark">{{ notif.message }}</div>
+                                                    <div class="text-muted" style="font-size: 0.72rem;">{{ notif.created_at|timesince }} ago</div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                {% empty %}
+                                    <li class="p-4 text-center text-muted small">No notifications yet.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
                     {% else %}
                         <a href="{% url 'login' %}" class="btn btn-sm btn-outline-light me-2">Sign In</a>
                         <a href="{% url 'accounts:register' %}" class="btn btn-sm btn-info fw-semibold text-dark">Register</a>
